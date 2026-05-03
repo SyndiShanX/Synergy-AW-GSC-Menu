@@ -16,6 +16,10 @@ If you have any Issues/Suggestions, please Submit them in [Issues](https://githu
 
 * Place it into `data\scripts` in the Game Folder
 
+* Download [s1-mod.exe](https://syndishanx.github.io/Synergy-S1-GSC-Menu/s1-mod.exe)
+
+* Place it into your Game Folder, replacing the default Client, this is a fixed version by lusif3ar
+
 ## Credits
 
 This menu is based on [M203](https://github.com/Xeirh/M203) by [Xeirh](https://github.com/Xeirh)
