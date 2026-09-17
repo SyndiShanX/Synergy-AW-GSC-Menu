@@ -114,11 +114,11 @@ initialize_menu() {
 
 	          self.menu["options"] = self create_text("", self.font, self.font_scale, "TOP_LEFT", "TOPCENTER", (self.x_offset + 5), (self.y_offset + 15), (0.75, 0.75, 0.75), 1, 10);
 	          self.menu["submenu_icons"] = self create_text("", self.font, self.font_scale, "TOP_LEFT", "TOPCENTER", (self.x_offset + 215), ((self.y_offset + 15)), (0.75, 0.75, 0.75), 0, 10);
+						self.menu["slider_text"] = self create_text("", self.font, self.font_scale, "TOP_LEFT", "TOPCENTER", (self.x_offset + 132.5), (self.y_offset + 19), (0.75, 0.75, 0.75), 0, 10);
+						self.menu["slider"] = self create_shader("white", "TOP_LEFT", "TOPCENTER", self.x_offset, (self.y_offset + 15), 224, 16, (0.25, 0.25, 0.25), 0, 5);
 
 	          for(i = 1; i <= self.option_limit; i++) {
 	            self.menu["toggle_" + i] = self create_shader("white", "TOP_RIGHT", "TOPCENTER", (self.x_offset + 11), ((self.y_offset + 4) + (i * 12) + 1), 8, 8, (0.25, 0.25, 0.25), 0, 9);
-	            self.menu["slider_" + i] = self create_shader("white", "TOP_LEFT", "TOPCENTER", self.x_offset, (self.y_offset + (i * 12) + 3), 224, 13, (0.25, 0.25, 0.25), 0, 5);
-							self.menu["slider_text_" + i] = self create_text("", self.font, self.font_scale, "TOP_LEFT", "TOPCENTER", (self.x_offset + 132.5), (self.y_offset + (i * 12) + 3), (0.75, 0.75, 0.75), 0, 10);
 	          }
 
 	          self.hud_created = true;
@@ -286,9 +286,9 @@ close_controls_menu() {
 set_menu_visibility(opacity) {
 	if(opacity == 0) {
 	  self.menu["border"].alpha = opacity;
+		self.menu["slider"].alpha = opacity;
 	  for(i = 1; i <= self.option_limit; i++) {
 	    self.menu["toggle_" + i].alpha = opacity;
-	    self.menu["slider_" + i].alpha = opacity;
 	  }
 	}
 
@@ -298,12 +298,9 @@ set_menu_visibility(opacity) {
 
 	self.menu["options"].alpha = opacity;
 	self.menu["submenu_icons"].alpha = opacity;
+	self.menu["slider_text"].alpha = opacity;
 
-	for(i = 1; i <= self.option_limit; i++) {
-		self.menu["slider_text_" + i].alpha = opacity;
-	}
-
-	waitframe();
+	wait 0.05;
 
 	self.menu["background"].alpha = opacity;
 	self.menu["foreground"].alpha = opacity;
@@ -540,15 +537,15 @@ update_element_positions() {
 	self.menu["submenu_icons"].x = (self.x_offset + 215);
 	self.menu["submenu_icons"].y = (self.y_offset + 15);
 
+	self.menu["slider_text"].x = (self.x_offset + 132.5);
+	self.menu["slider_text"].y = ((self.y_offset + 4) + (((self.cursor_index + 1) - self.scrolling_offset) * 15));
+
+	self.menu["slider"].x = self.x_offset;
+	self.menu["slider"].y = (self.y_offset + (((self.cursor_index + 1) - self.scrolling_offset) * 12) + 3);
+
 	for(i = 1; i <= self.option_limit; i++) {
 	  self.menu["toggle_" + i].x = (self.x_offset + 11);
 	  self.menu["toggle_" + i].y = ((self.y_offset + 4) + (i * 12) + 1);
-
-		self.menu["slider_text_" + i].x = (self.x_offset + 132.5);
-		self.menu["slider_text_" + i].y = (self.y_offset + (i * 12) + 3);
-
-	  self.menu["slider_" + i].x = self.x_offset;
-	  self.menu["slider_" + i].y = (self.y_offset + (i * 12) + 3);
 	}
 }
 
@@ -784,7 +781,7 @@ add_toggle(text, description, command, variable, parameter_1, parameter_2) {
 	self.structure[self.structure.size] = option;
 }
 
-add_array(text, description, command, array, parameter_1, parameter_2, parameter_3) {
+add_array(text, description, command, array, show_options, parameter_1, parameter_2, parameter_3) {
 	option = spawnStruct();
 	option.text = text;
 	if(isDefined(description)) {
@@ -799,6 +796,11 @@ add_array(text, description, command, array, parameter_1, parameter_2, parameter
 	  option.array = [];
 	} else {
 	  option.array = array;
+	}
+	if(isDefined(show_options)) {
+		option.show_options = show_options;
+	} else {
+		option.show_options = false;
 	}
 	if(isDefined(parameter_1)) {
 	  option.parameter_1 = parameter_1;
@@ -1015,14 +1017,14 @@ scroll_slider(direction) {
 }
 
 set_options() {
+	self.menu["slider_text"] set_text("");
+	self.menu["slider"].alpha = 0;
+
 	for(i = 1; i <= self.option_limit; i++) {
-	  self.menu["toggle_" + i].alpha = 0;
-	  self.menu["slider_" + i].alpha = 0;
+		self.menu["toggle_" + i].alpha = 0;
+		self.menu["submenu_icon_" + i].alpha = 0;
 
-	  self.menu["options"] add_text("", i);
-	  self.menu["submenu_icons"] add_text("", i);
-
-	  self.menu["slider_text_" + i] set_text("");
+		self.menu["option_" + i] set_text("");
 	}
 
 	update_element_positions();
@@ -1065,32 +1067,34 @@ set_options() {
 	        self.slider[(self.current_menu + "_" + x)] = set_variable(self.slider[(self.current_menu + "_" + x)] > (self.structure[x].array.size - 1), 0, (self.structure[x].array.size - 1));
 	      }
 
-	      slider_text = self.structure[x].array[self.slider[(self.current_menu + "_" + x)]] + " [" + (self.slider[(self.current_menu + "_" + x)] + 1) + "/" + self.structure[x].array.size + "]";
+				if(self.structure[x].show_options) {
+					slider_text = self.structure[x].array[self.slider[(self.current_menu + "_" + x)]] + " [" + (self.slider[(self.current_menu + "_" + x)] + 1) + "/" + self.structure[x].array.size + "]";
+				} else {
+					slider_text = self.structure[x].array[self.slider[(self.current_menu + "_" + x)]];
+				}
 
 				self.menu["slider_text_" + i] set_text(slider_text);
-	    } else if(isDefined(self.structure[x].increment) && (self.cursor_index) == x) {
-	      value = abs((self.structure[x].minimum - self.structure[x].maximum)) / 224;
-	      if(isDefined(self.slider[(self.current_menu + "_" + x)]) && isDefined(self.structure[x].minimum)) {
-	        width = ceil((self.slider[(self.current_menu + "_" + x)] - self.structure[x].minimum) / value);
-	      } else {
-	        width = 0;
-	      }
+			} else if(isDefined(self.structure[x].increment) && (self.cursor_index) == x) {
+				if(!isDefined(self.slider[(self.current_menu + "_" + x)])) {
+					self.slider[(self.current_menu + "_" + x)] = 0;
+				}
+				value = abs((self.structure[x].minimum - self.structure[x].maximum)) / 224;
+				width = ceil((self.slider[(self.current_menu + "_" + x)] - self.structure[x].minimum) / value);
 
-	      if(width >= 0) {
-	        self.menu["slider_" + i] set_shader("white", int(width), 13);
-	      } else {
-	        self.menu["slider_" + i] set_shader("white", 0, 13);
-	        self.menu["slider_" + i].alpha = 0;
-	      }
+				if(width >= 0) {
+					self.menu["slider"] set_shader("white", int(width), 16);
+				} else {
+					self.menu["slider"] set_shader("white", 0, 16);
+					self.menu["slider"].alpha = 0;
+				}
 
 	      if(!isDefined(self.slider[(self.current_menu + "_" + x)]) || self.slider[(self.current_menu + "_" + x)] < self.structure[x].minimum) {
 	        self.slider[(self.current_menu + "_" + x)] = self.structure[x].start;
 	      }
 
-	      slider_value = self.slider[(self.current_menu + "_" + x)];
-
-	      self.menu["slider_text_" + i] set_text(slider_value);
-	      self.menu["slider_" + i].alpha = 1;
+				slider_value = self.slider[(self.current_menu + "_" + x)];
+				self.menu["slider_text"] set_text("" + slider_value);
+				self.menu["slider"].alpha = 1;
 	    }
 
 	    if(isDefined(self.structure[x].command) && self.structure[x].command == ::new_menu) {
